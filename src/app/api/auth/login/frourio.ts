@@ -1,21 +1,23 @@
 import type { FrourioSpec } from '@frourio/next';
+import { SetCookieHeaderValueSchema } from 'src/shared/http/cookie';
+import { LoginRequestSchema, UserPublicSchema } from 'src/shared/schema/user';
 import { z } from 'zod';
-
-export const UserSchema = z.object({
-  id: z.string(),
-  email: z.string(),
-  password: z.string(),
-  user: z.string(),
-});
 
 export const frourioSpec = {
   get: {
-    res: { 200: { body: z.object({ value: z.string() }) } },
+    res: {
+      200: { body: z.object({ value: z.string() }) },
+    },
   },
   post: {
-    body: UserSchema.pick({ email: true, password: true }),
+    body: LoginRequestSchema,
     res: {
-      200: { body: UserSchema.omit({ password: true }) },
+      201: {
+        body: UserPublicSchema,
+        headers: z.object({
+          'Set-Cookie': SetCookieHeaderValueSchema,
+        }),
+      },
       401: { body: z.object({ message: z.string() }) },
     },
   },

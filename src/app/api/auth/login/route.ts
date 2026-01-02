@@ -1,4 +1,5 @@
-import { cookies } from 'next/headers';
+import { authenticate, issueSession } from 'src/modules/auth/authService';
+import { serializeSetCookie } from 'src/shared/http/cookie';
 import { createRoute } from './frourio.server';
 
 export const { GET, POST } = createRoute({
@@ -6,15 +7,21 @@ export const { GET, POST } = createRoute({
     return { status: 200, body: { value: 'ok' } };
   },
   post: async ({ body }) => {
-    if (!body.email.endsWith('@example.com') || body.password !== 'test1234')
-      return { status: 401, body: { message: 'Invalid email or password' } };
+    const canAuth = await authenticate(body.email, body.password);
+    if (!canAuth) return { status: 401, body: { message: 'Invalid email or password' } };
 
-    const cookieStore = await cookies();
-    cookieStore.set('session', 'user-123', { path: '/' });
-
+    const sessionId = await issueSession('ExampleUserId');
     return {
-      status: 200,
-      body: { id: '1', email: 'user@example.com', user: 'Example User' },
+      status: 201,
+      headers: {
+        'Set-Cookie': serializeSetCookie('session', sessionId, {
+          httpOnly: true,
+          path: '/',
+          sameSite: 'Lax',
+          secure: true,
+        }),
+      },
+      body: { id: '1', email: 'user@example.com', name: 'ExampleUserId' },
     };
   },
 });

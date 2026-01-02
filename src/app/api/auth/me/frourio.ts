@@ -1,11 +1,11 @@
 import type { FrourioSpec } from '@frourio/next';
+import { UserPublicSchema } from 'src/shared/schema/user';
 import { z } from 'zod';
-import { UserSchema } from '../login/frourio';
 
 export const frourioSpec = {
   get: {
     res: {
-      200: { body: UserSchema.pick({ id: true, email: true, user: true }) },
+      200: { body: UserPublicSchema.pick({ name: true }) },
       401: { body: z.object({ message: z.string() }) },
     },
   },
