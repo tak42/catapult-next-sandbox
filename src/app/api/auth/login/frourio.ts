@@ -6,7 +6,12 @@ import { z } from 'zod';
 export const frourioSpec = {
   get: {
     res: {
-      200: { body: z.object({ value: z.string() }) },
+      302: {
+        headers: z.object({
+          'Set-Cookie': SetCookieHeaderValueSchema,
+          Location: z.string(),
+        }),
+      },
     },
   },
   post: {

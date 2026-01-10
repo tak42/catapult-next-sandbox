@@ -44,6 +44,7 @@ const env = z
     OIDC_CLIENT_SECRET: z.string().optional(),
 
     OIDC_REDIRECT_URI: z.string().url(),
+    OIDC_SCOPE: z.string(),
     APP_BASE_URL: z.string().url(),
 
     SESSION_COOKIE_NAME: z.string().min(1).default('session'),
@@ -63,6 +64,9 @@ export const OIDC_CLIENT_ID = env.OIDC_CLIENT_ID;
 export const OIDC_CLIENT_SECRET = env.OIDC_CLIENT_SECRET;
 
 export const OIDC_REDIRECT_URI = env.OIDC_REDIRECT_URI;
+
+export const OIDC_SCOPE = env.OIDC_SCOPE;
+
 export const APP_BASE_URL = env.APP_BASE_URL;
 
 export const SESSION_COOKIE_NAME = env.SESSION_COOKIE_NAME;

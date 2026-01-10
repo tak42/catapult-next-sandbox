@@ -9,4 +9,9 @@ const UserBaseSchema = z.object({
 
 export const UserPublicSchema = UserBaseSchema.pick({ id: true, email: true, name: true });
 
-export const LoginRequestSchema = UserBaseSchema.pick({ email: true, password: true });
+export const LoginRequestSchema = z.object({
+  email: z.string(),
+  password: z.string(),
+});
+
+export type LoginRequest = z.infer<typeof LoginRequestSchema>;
