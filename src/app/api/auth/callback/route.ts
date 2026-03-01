@@ -1,35 +1,69 @@
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 import { SESSION_COOKIE_SECURE } from 'server/utils/serverEnvs';
 import { issueSession } from 'src/modules/auth/authService';
 import { serializeSetCookie } from 'src/shared/http/cookie';
-import { createRoute } from './frourio.server';
+import { AuthCallbackQuerySchema } from './frourio';
 
 type OidcTx = {
   state: string;
   verifier: string;
 };
 
-export const { GET } = createRoute({
-  get: async ({ query }) => {
-    const authError = await validateAuthCallback(query.error, query.state);
-    if (authError) return { status: 401, body: { message: authError } };
 
-    const sessionId = await issueSession('ExampleToken');
+type ParsedCallbackQueryResult =
+  | {
+      ok: true;
+      query: { code?: string; state?: string; error?: string };
+    }
+  | { ok: false; res: NextResponse };
 
-    return {
-      status: 302,
-      headers: {
-        'Set-Cookie': serializeSetCookie('session', sessionId, {
-          httpOnly: true,
-          path: '/',
-          sameSite: 'Lax',
-          secure: SESSION_COOKIE_SECURE,
-        }),
-        Location: '/',
-      },
-    };
-  },
-});
+function parseCallbackQuery(req: Request): ParsedCallbackQueryResult {
+  const result = AuthCallbackQuerySchema.safeParse({
+    code: getSearchParam(req, 'code'),
+    state: getSearchParam(req, 'state'),
+    error: getSearchParam(req, 'error'),
+  });
+
+  return result.success
+    ? { ok: true, query: result.data }
+    : { ok: false, res: createInvalidQueryResponse(result.error.issues[0]?.message) };
+}
+
+
+function getSearchParam(req: Request, key: string): string | undefined {
+  const value = new URL(req.url).searchParams.get(key);
+  return value === null ? undefined : value;
+}
+
+function createInvalidQueryResponse(message: string | undefined): NextResponse {
+  return NextResponse.json({ message: message || 'Invalid callback query' }, { status: 401 });
+}
+
+function createRedirectWithSession(req: Request, sessionId: string): NextResponse {
+  const res = NextResponse.redirect(new URL('/', req.url), { status: 302 });
+  res.headers.set(
+    'Set-Cookie',
+    serializeSetCookie('session', sessionId, {
+      httpOnly: true,
+      path: '/',
+      sameSite: 'Lax',
+      secure: SESSION_COOKIE_SECURE,
+    }),
+  );
+  return res;
+}
+
+export async function GET(req: Request): Promise<NextResponse> {
+  const parsed = parseCallbackQuery(req);
+  if (!parsed.ok) return parsed.res;
+
+  const authError = await validateAuthCallback(parsed.query.error, parsed.query.state);
+  if (authError) return NextResponse.json({ message: authError }, { status: 401 });
+
+  const sessionId = await issueSession('ExampleToken');
+  return createRedirectWithSession(req, sessionId);
+}
 
 async function validateAuthCallback(
   error: string | undefined,
