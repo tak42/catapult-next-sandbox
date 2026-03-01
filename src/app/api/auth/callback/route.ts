@@ -1,24 +1,46 @@
 import { cookies } from 'next/headers';
-import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { SESSION_COOKIE_SECURE } from 'server/utils/serverEnvs';
 import { issueSession } from 'src/modules/auth/authService';
 import { serializeSetCookie } from 'src/shared/http/cookie';
+import { AuthCallbackQuerySchema } from './frourio';
 
-export async function GET(req: NextRequest): Promise<NextResponse> {
-  const parsed = parseAuthCallbackParams(req);
-  if (!parsed.ok) return parsed.res;
+type OidcTx = {
+  state: string;
+  verifier: string;
+};
 
-  const { code, state } = parsed.params;
-  console.log({ code, state });
 
-  const txResult = await parseOidcTxFromCookies();
-  if (!txResult.ok) return txResult.res;
-  if (txResult.tx.state !== state)
-    return NextResponse.json({ message: 'Invalid state' }, { status: 401 });
+type ParsedCallbackQueryResult =
+  | {
+      ok: true;
+      query: { code?: string; state?: string; error?: string };
+    }
+  | { ok: false; res: NextResponse };
 
-  const sessionId = await issueSession('ExampleToken');
+function parseCallbackQuery(req: Request): ParsedCallbackQueryResult {
+  const result = AuthCallbackQuerySchema.safeParse({
+    code: getSearchParam(req, 'code'),
+    state: getSearchParam(req, 'state'),
+    error: getSearchParam(req, 'error'),
+  });
 
+  return result.success
+    ? { ok: true, query: result.data }
+    : { ok: false, res: createInvalidQueryResponse(result.error.issues[0]?.message) };
+}
+
+
+function getSearchParam(req: Request, key: string): string | undefined {
+  const value = new URL(req.url).searchParams.get(key);
+  return value === null ? undefined : value;
+}
+
+function createInvalidQueryResponse(message: string | undefined): NextResponse {
+  return NextResponse.json({ message: message || 'Invalid callback query' }, { status: 401 });
+}
+
+function createRedirectWithSession(req: Request, sessionId: string): NextResponse {
   const res = NextResponse.redirect(new URL('/', req.url), { status: 302 });
   res.headers.set(
     'Set-Cookie',
@@ -32,67 +54,39 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   return res;
 }
 
-type AuthCallbackParams = {
-  code: string;
-  state: string;
-  error?: string;
-};
+export async function GET(req: Request): Promise<NextResponse> {
+  const parsed = parseCallbackQuery(req);
+  if (!parsed.ok) return parsed.res;
 
-type ParseAuthCallbackParamsResult =
-  | { ok: true; params: AuthCallbackParams }
-  | { ok: false; res: NextResponse };
+  const authError = await validateAuthCallback(parsed.query.error, parsed.query.state);
+  if (authError) return NextResponse.json({ message: authError }, { status: 401 });
 
-function parseAuthCallbackParams(req: NextRequest): ParseAuthCallbackParamsResult {
-  const searchParams = req.nextUrl.searchParams;
-
-  const error = searchParams.get('error');
-  if (error) {
-    return { ok: false, res: NextResponse.json({ message: error }, { status: 401 }) };
-  }
-
-  const code = searchParams.get('code');
-  if (!code) {
-    return { ok: false, res: NextResponse.json({ message: 'Missing code' }, { status: 400 }) };
-  }
-
-  const state = searchParams.get('state');
-  if (!state) {
-    return { ok: false, res: NextResponse.json({ message: 'Missing state' }, { status: 400 }) };
-  }
-
-  return { ok: true, params: { code, state } };
+  const sessionId = await issueSession('ExampleToken');
+  return createRedirectWithSession(req, sessionId);
 }
 
-type OidcTx = {
-  state: string;
-  verifier: string;
-};
+async function validateAuthCallback(
+  error: string | undefined,
+  state: string | undefined,
+): Promise<string | null> {
+  if (error) return error;
 
-type ParseOidcTxFromCookiesResult = { ok: true; tx: OidcTx } | { ok: false; res: NextResponse };
+  const oidcTx = await loadOidcTxFromCookie();
+  if (!oidcTx) return 'Invalid oidc_tx cookie';
+  if (oidcTx.state !== state) return 'Invalid state';
 
-async function parseOidcTxFromCookies(): Promise<ParseOidcTxFromCookiesResult> {
+  return null;
+}
+
+async function loadOidcTxFromCookie(): Promise<OidcTx | null> {
   const cookieStore = await cookies();
   const oidcTxCookie = cookieStore.get('oidc_tx');
-  if (!oidcTxCookie) {
-    return {
-      ok: false,
-      res: NextResponse.json({ message: 'Missing oidc_tx cookie' }, { status: 401 }),
-    };
-  }
+  if (!oidcTxCookie) return null;
 
   const parsed = parseJsonUnknown(oidcTxCookie.value);
-  if (!parsed.ok) {
-    return { ok: false, res: NextResponse.json({ message: 'Parse failed' }, { status: 401 }) };
-  }
+  if (!parsed.ok || !isOidcTx(parsed.value)) return null;
 
-  if (!isOidcTx(parsed.value)) {
-    return {
-      ok: false,
-      res: NextResponse.json({ message: 'Invalid oidc_tx cookie' }, { status: 401 }),
-    };
-  }
-
-  return { ok: true, tx: parsed.value };
+  return parsed.value;
 }
 
 function parseJsonUnknown(json: string): { ok: true; value: unknown } | { ok: false } {
