@@ -10,7 +10,6 @@ type OidcTx = {
   verifier: string;
 };
 
-
 type ParsedCallbackQueryResult =
   | {
       ok: true;
@@ -29,7 +28,6 @@ function parseCallbackQuery(req: Request): ParsedCallbackQueryResult {
     ? { ok: true, query: result.data }
     : { ok: false, res: createInvalidQueryResponse(result.error.issues[0]?.message) };
 }
-
 
 function getSearchParam(req: Request, key: string): string | undefined {
   const value = new URL(req.url).searchParams.get(key);

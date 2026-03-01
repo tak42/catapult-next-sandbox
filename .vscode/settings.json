@@ -8,6 +8,7 @@
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.referencesCodeLens.enabled": true,
+  "typescript.enablePromptUseWorkspaceTsdk": true,
   "files.eol": "\n",
   "editor.tabSize": 2,
   "stylelint.validate": ["css"],
