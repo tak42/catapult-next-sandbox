@@ -4,7 +4,7 @@ import {
   DeleteObjectsCommand,
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
-import { testEnvs } from './utils';
+import { testEnvs } from 'tests/test-utils/utils';
 
 export async function resetS3Bucket(s3Client: S3Client): Promise<void> {
   const objects = await s3Client.send(new ListObjectsV2Command({ Bucket: testEnvs().S3_BUCKET }));

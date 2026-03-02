@@ -34,4 +34,3 @@ npm-debug.log*
 # frourio
 **/$*.ts
 frourio.*.ts
-tests/setupMswHandlers.ts

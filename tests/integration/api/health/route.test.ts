@@ -1,5 +1,5 @@
+import { $fc } from 'src/app/api/health/frourio.client';
 import { expect, test } from 'vitest';
-import { $fc } from './frourio.client';
 
 test('GET /api/health', async () => {
   const res = await $fc().$get();
