@@ -34,3 +34,6 @@ npm-debug.log*
 # frourio
 **/$*.ts
 frourio.*.ts
+
+# frourio-next-msw (default output)
+/tests/setupMswHandlers.ts

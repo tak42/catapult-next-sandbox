@@ -6,7 +6,7 @@ import type { InlineConfig } from 'vitest/node';
 const includeFile = process.argv[4] as string | undefined;
 const testBase: InlineConfig = {
   environment: 'jsdom',
-  setupFiles: ['tests/setup/setup.ts'],
+  setupFiles: ['tests/setup.ts'],
   testTimeout: 10000,
 };
 const coverageBase = {

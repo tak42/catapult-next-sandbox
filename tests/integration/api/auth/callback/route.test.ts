@@ -1,29 +1,26 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-const { issueSessionMock, getCookieMock } = vi.hoisted(() => ({
+const { issueSessionMock } = vi.hoisted(() => ({
   issueSessionMock: vi.fn(),
-  getCookieMock: vi.fn(),
 }));
 
 vi.mock('src/modules/auth/authService', () => ({
   issueSession: issueSessionMock,
 }));
 
-vi.mock('next/headers', () => ({
-  cookies: async (): Promise<{ get: typeof getCookieMock }> => ({
-    get: getCookieMock,
-  }),
-}));
-
-import { GET } from 'src/app/api/auth/callback/route';
+async function loadGET(): Promise<(req: Request) => Promise<Response>> {
+  const route = await import('src/app/api/auth/callback/route');
+  return route.GET;
+}
 
 describe('GET /api/auth/callback', () => {
   beforeEach(() => {
+    vi.resetModules();
     issueSessionMock.mockReset();
-    getCookieMock.mockReset();
   });
 
   test('queryが不正なら401を返す', async () => {
+    const GET = await loadGET();
     const req = new Request('http://localhost:3300/api/auth/callback?state=only-state');
 
     const res = await GET(req);
@@ -33,6 +30,7 @@ describe('GET /api/auth/callback', () => {
   });
 
   test('error付きコールバックは401を返す', async () => {
+    const GET = await loadGET();
     const req = new Request('http://localhost:3300/api/auth/callback?error=access_denied');
 
     const res = await GET(req);
@@ -42,7 +40,7 @@ describe('GET /api/auth/callback', () => {
   });
 
   test('oidc_tx cookieがない場合は401を返す', async () => {
-    getCookieMock.mockReturnValue(undefined);
+    const GET = await loadGET();
     const req = new Request('http://localhost:3300/api/auth/callback?code=abc&state=s1');
 
     const res = await GET(req);
@@ -52,9 +50,13 @@ describe('GET /api/auth/callback', () => {
   });
 
   test('stateが一致すればsession cookie付きで302リダイレクト', async () => {
-    getCookieMock.mockReturnValue({ value: JSON.stringify({ state: 's1', verifier: 'v1' }) });
+    const GET = await loadGET();
     issueSessionMock.mockResolvedValue('issued-session-id');
-    const req = new Request('http://localhost:3300/api/auth/callback?code=abc&state=s1');
+    const req = new Request('http://localhost:3300/api/auth/callback?code=abc&state=s1', {
+      headers: {
+        cookie: `oidc_tx=${encodeURIComponent(JSON.stringify({ state: 's1', verifier: 'v1' }))}`,
+      },
+    });
 
     const res = await GET(req);
 
