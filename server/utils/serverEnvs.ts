@@ -1,12 +1,16 @@
-import { config } from 'dotenv';
 import { z } from 'zod';
+
+import { getLoadedEnvFile, loadEnv, resolveAppEnv } from './loadEnv';
+
+loadEnv();
+
+export const APP_ENV = resolveAppEnv();
+export const LOADED_ENV_FILE = getLoadedEnvFile();
 
 const NODE_ENV = z
   .enum(['test', 'development', 'production', 'cli'])
   .default('cli')
   .parse(process.env.NODE_ENV);
-
-config();
 
 const S3_ENDPOINT = z.string().default('').parse(process.env.S3_ENDPOINT);
 const S3_BUCKET = z.string().default('').parse(process.env.S3_BUCKET);
