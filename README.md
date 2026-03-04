@@ -2,6 +2,22 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 ## Getting Started
 
+## Environment variables
+
+This project supports switching env files via `APP_ENV`.
+
+- `APP_ENV=local` (default unless `NODE_ENV=production`)
+  - loads `.env.local` then `.env`
+- `APP_ENV=develop`
+  - loads `.env.develop.local` / `.env.development.local` then `.env.develop` / `.env.development` then `.env`
+- `APP_ENV=production` (default when `NODE_ENV=production`)
+  - loads `.env.production.local` then `.env.production` then `.env`
+
+Notes:
+
+- On Amplify, set `APP_ENV=develop` to use develop settings while still running `next build`.
+- For `local`/`develop`, env file values override variables already loaded by Next.js during build.
+
 First, run the development server:
 
 ```bash
