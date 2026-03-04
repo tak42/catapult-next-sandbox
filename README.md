@@ -7,11 +7,11 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 This project supports switching env files via `APP_ENV`.
 
 - `APP_ENV=local` (default unless `NODE_ENV=production`)
-	- loads `.env.local` then `.env`
+  - loads `.env.local` then `.env`
 - `APP_ENV=develop`
-	- loads `.env.develop.local` / `.env.development.local` then `.env.develop` / `.env.development` then `.env`
+  - loads `.env.develop.local` / `.env.development.local` then `.env.develop` / `.env.development` then `.env`
 - `APP_ENV=production` (default when `NODE_ENV=production`)
-	- loads `.env.production.local` then `.env.production` then `.env`
+  - loads `.env.production.local` then `.env.production` then `.env`
 
 Notes:
 
