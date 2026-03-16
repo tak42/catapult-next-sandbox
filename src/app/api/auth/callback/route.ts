@@ -3,6 +3,7 @@ import { SESSION_COOKIE_SECURE } from 'server/utils/serverEnvs';
 import { issueSession } from 'src/modules/auth/authService';
 import { serializeSetCookie } from 'src/shared/http/cookie';
 import { AuthCallbackQuerySchema } from './frourio';
+import { createRoute } from './frourio.server';
 
 type OidcTx = {
   state: string;
@@ -38,6 +39,7 @@ function createInvalidQueryResponse(message: string | undefined): NextResponse {
 }
 
 function createRedirectWithSession(req: Request, sessionId: string): NextResponse {
+  console.log('req.url:', req.url);
   const res = NextResponse.redirect(new URL('/', req.url), { status: 302 });
   res.headers.set(
     'Set-Cookie',
@@ -51,7 +53,25 @@ function createRedirectWithSession(req: Request, sessionId: string): NextRespons
   return res;
 }
 
-export async function GET(req: Request): Promise<NextResponse> {
+export const { GET } = createRoute({
+  get: async ({ query }) => {
+    console.log('Callback query:', query);
+    const res = NextResponse.redirect(new URL('/', 'http://localhost:3300'), { status: 302 });
+    const sessionId = '';
+    res.headers.set(
+      'Set-Cookie',
+      serializeSetCookie('session', sessionId, {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'Lax',
+        secure: SESSION_COOKIE_SECURE,
+      }),
+    );
+    return res;
+  },
+});
+
+export async function GET2(req: Request): Promise<NextResponse> {
   const parsed = parseCallbackQuery(req);
   if (!parsed.ok) return parsed.res;
 

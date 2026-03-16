@@ -1,4 +1,4 @@
-import { SetCookieHeaderValueSchema } from 'src/shared/http/cookie';
+import type { FrourioSpec } from '@frourio/next';
 import { z } from 'zod';
 
 export const AuthCallbackQuerySchema = z
@@ -29,15 +29,6 @@ export const AuthCallbackQuerySchema = z
 
 export const frourioSpec = {
   get: {
-    query: AuthCallbackQuerySchema,
-    res: {
-      302: {
-        headers: z.object({
-          'Set-Cookie': SetCookieHeaderValueSchema,
-          Location: z.string(),
-        }),
-      },
-      401: { body: z.object({ message: z.string() }) },
-    },
+    query: z.object({ url: z.string().url() }),
   },
-};
+} satisfies FrourioSpec;

@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   OIDC_AUTHORIZATION_ENDPOINT,
@@ -36,19 +37,18 @@ export const { GET, POST } = createRoute({
     url.searchParams.set('code_challenge', pkce.challenge);
     url.searchParams.set('code_challenge_method', 'S256');
 
-    return {
-      status: 302,
-      headers: {
-        'Set-Cookie': serializeSetCookie('oidc_tx', tx, {
-          httpOnly: true,
-          sameSite: 'Lax',
-          path: '/api/auth',
-          maxAge: 300,
-          secure: SESSION_COOKIE_SECURE,
-        }),
-        Location: url.toString(),
-      },
-    };
+    const res = NextResponse.redirect(url.toString(), { status: 302 });
+    res.headers.set(
+      'Set-Cookie',
+      serializeSetCookie('oidc_tx', tx, {
+        httpOnly: true,
+        sameSite: 'Lax',
+        path: '/api/auth',
+        maxAge: 300,
+        secure: SESSION_COOKIE_SECURE,
+      }),
+    );
+    return res;
   },
   post: async ({ body }: { body: LoginRequest }) => {
     const canAuth = await authenticate(body.email, body.password);
