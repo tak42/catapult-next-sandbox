@@ -25,17 +25,21 @@ This project is intended for learning `catapult-next` and `frourio-next`, so pre
 - Keep the endpoint structure centered on `login`, `callback`, and `me`.
 - Add one endpoint for step-up verification using TOTP.
 - Design the step-up layer so that Passkey/WebAuthn can be added later without redesigning the overall flow.
+- Add automated tests together with the implementation.
+- Keep test-related files aggregated under the `tests/` directory.
+- The local development setup must remain runnable in a closed environment.
+- Prefer using `Magnito` as the authentication simulator for local development wherever feasible.
 
 ## Target Endpoint Structure
 
 Implement or refactor toward the following API responsibilities.
 
-| Endpoint | Responsibility | Notes |
-| --- | --- | --- |
-| `/api/auth/login` | Start authorization | Generate `state`, `nonce`, PKCE values, transaction cookie, and redirect to OIDC authorization endpoint |
-| `/api/auth/callback` | Validate callback and issue app session | Validate callback inputs and transaction context, exchange code if needed, validate claims, then issue server session cookie |
-| `/api/auth/me` | Return current session/authentication state | Determine whether the user is authenticated, what assurance level they have, and whether step-up is required |
-| `/api/auth/step-up/verify` | Perform TOTP-based step-up | Verify TOTP against the authenticated user/session and upgrade the current session assurance state |
+| Endpoint                   | Responsibility                              | Notes                                                                                                                        |
+| -------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `/api/auth/login`          | Start authorization                         | Generate `state`, `nonce`, PKCE values, transaction cookie, and redirect to OIDC authorization endpoint                      |
+| `/api/auth/callback`       | Validate callback and issue app session     | Validate callback inputs and transaction context, exchange code if needed, validate claims, then issue server session cookie |
+| `/api/auth/me`             | Return current session/authentication state | Determine whether the user is authenticated, what assurance level they have, and whether step-up is required                 |
+| `/api/auth/step-up/verify` | Perform TOTP-based step-up                  | Verify TOTP against the authenticated user/session and upgrade the current session assurance state                           |
 
 Keep these responsibilities strict. Avoid mixing authorization-start behavior, callback validation, and session introspection in the same endpoint.
 
@@ -80,6 +84,15 @@ Represent assurance in a way that can later support:
 - policy-driven selection by route or action
 
 Do not tightly couple session state to TOTP-only semantics.
+
+## Local Development Environment Requirements
+
+The implementation must remain workable in local development without depending on externally reachable services.
+
+- Keep the local auth flow executable in a closed or isolated environment.
+- Prefer `Magnito` as the local authentication simulator whenever the required behavior can be expressed with it.
+- Do not make the redesigned flow depend on cloud-only infrastructure for normal local verification.
+- If some future Passkey-related behavior cannot be fully simulated by `Magnito`, keep the base login and TOTP-based step-up flow runnable locally without that external dependency.
 
 ## Responsibility Boundaries Per Endpoint
 
@@ -240,6 +253,16 @@ Avoid naming or modeling that makes future Passkey support awkward.
 - Avoid logging secrets, tokens, TOTP seeds, or raw sensitive data.
 - Make debugging possible without leaking credentials.
 
+## Automated Testing Requirements
+
+Implement automated tests together with the auth redesign.
+
+- Place test-related files under the `tests/` directory.
+- Extend or add tests so that the redesigned auth flow is verifiable as part of the normal local development workflow.
+- Cover the main auth behaviors, including authorization start, callback validation, session issuance, session inspection, and TOTP-based step-up.
+- Keep the tests aligned with the closed local environment requirement and prefer using `Magnito`-based local behavior where practical.
+- Do not scatter new auth test files outside the `tests/` directory unless there is a strong existing project convention that requires it.
+
 ## frourio-next Implementation Guidance
 
 - Keep `frourio.ts` definitions aligned with the actual request and non-redirect response contracts.
@@ -272,6 +295,9 @@ The implementation should:
 - make the login and callback flow explicit and auditable
 - introduce TOTP-based step-up in a way that does not block future Passkey support
 - keep the code readable as a learning-oriented reference implementation
+- include automated tests for the redesigned auth flow
+- keep auth-related tests organized under the `tests/` directory
+- remain runnable in a closed local development environment with `Magnito` used as much as practical
 
 ## Non-Goals
 

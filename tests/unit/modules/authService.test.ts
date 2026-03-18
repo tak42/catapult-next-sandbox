@@ -1,10 +1,21 @@
-import { authenticate, issueSession, verifySession } from 'src/modules/auth/authService';
-import { sessionMap } from 'src/modules/auth/sessionStore';
+import {
+  authenticate,
+  consumeOidcTransaction,
+  createOidcTransaction,
+  isStepUpRequired,
+  issueSession,
+  readSession,
+  rotateSessionForStepUp,
+  verifySession,
+  verifyTotpCode,
+} from 'src/modules/auth/authService';
+import { oidcTransactionMap, sessionMap } from 'src/modules/auth/sessionStore';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 describe('authService', () => {
   beforeEach(() => {
     sessionMap.clear();
+    oidcTransactionMap.clear();
   });
 
   test('example.comドメインと固定パスワードのみ認証成功', async () => {
@@ -18,6 +29,39 @@ describe('authService', () => {
 
     expect(sessionMap.has(sessionId)).toBe(true);
     expect(verifySession(sessionId)).toBe('ExampleUser');
+  });
+
+  test('OIDCトランザクションは作成後に1回だけ消費できる', () => {
+    const tx = createOidcTransaction();
+
+    expect(tx.state).toBeTruthy();
+    expect(tx.nonce).toBeTruthy();
+    expect(tx.verifier).toBeTruthy();
+    expect(tx.challenge).toBeTruthy();
+
+    const consumed = consumeOidcTransaction(tx.state);
+
+    expect(consumed?.state).toBe(tx.state);
+    expect(consumeOidcTransaction(tx.state)).toBeNull();
+  });
+
+  test('step-upでセッションをローテーションしassuranceを引き上げる', async () => {
+    const sessionId = await issueSession('ExampleToken', { methods: ['oidc'] });
+    const rotated = rotateSessionForStepUp(sessionId, 'totp');
+
+    expect(rotated).toBeTruthy();
+    expect(rotated).not.toBe(sessionId);
+    expect(readSession(sessionId)).toBeNull();
+
+    const next = readSession(rotated ?? undefined);
+    expect(next?.assuranceLevel).toBe('step_up');
+    expect(next?.methods).toContain('totp');
+    expect(isStepUpRequired(next!)).toBe(false);
+  });
+
+  test('フォーマット不正なTOTPコードは検証失敗', () => {
+    expect(verifyTotpCode('ExampleToken', '12')).toBe(false);
+    expect(verifyTotpCode('ExampleToken', 'abcdef')).toBe(false);
   });
 
   test('存在しないセッション、未指定セッションはnull', () => {
